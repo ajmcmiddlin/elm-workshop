@@ -25,11 +25,16 @@ main =
 
 type Msg
     = HandleLoginResp (Result Http.Error String)
+    | SetLoginPlayerId String
+    | SetLoginPassword String
+    | LoginSubmit
 
 
 type alias Model =
     { backendOK : Bool
     , backendError : Maybe String
+    , loginPlayerId : String
+    , loginPassword : String
     }
 
 
@@ -37,8 +42,10 @@ init : flags -> ( Model, Cmd Msg )
 init _ =
     ( { backendOK = True
       , backendError = Nothing
+      , loginPlayerId = ""
+      , loginPassword = ""
       }
-    , BE.postApiLogin (BE.DbPlayer "user1" "pass") HandleLoginResp
+    , Cmd.none
     )
 
 
@@ -51,6 +58,15 @@ update action model =
         HandleLoginResp (Err err) ->
             ( { model | backendError = Just "Backend login failed", backendOK = False }, Cmd.none )
 
+        SetLoginPlayerId pId ->
+            ( { model | loginPlayerId = pId }, Cmd.none )
+
+        SetLoginPassword pw ->
+            ( { model | loginPassword = pw }, Cmd.none )
+
+        LoginSubmit ->
+            ( model, BE.postApiLogin (BE.DbPlayer "user1" "pass") HandleLoginResp )
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -61,18 +77,22 @@ view : Model -> H.Html Msg
 view model =
     H.div [ HA.class "login-box" ]
         [ H.h1 [] [ H.text "Login" ]
-        , H.form []
+        , H.form [ HE.onSubmit LoginSubmit ]
             [ H.input
                 [ HA.placeholder "Player Id"
                 , HAA.ariaLabel "Player ID"
+                , HE.onInput SetLoginPlayerId
                 ]
-                []
+                [ H.text model.loginPlayerId
+                ]
             , H.input
                 [ HA.placeholder "Password"
                 , HA.type_ "password"
                 , HAA.ariaLabel "Password"
+                , HE.onInput SetLoginPassword
                 ]
-                []
+                [ H.text model.loginPassword
+                ]
             , H.button
                 [ HA.class "btn primary" ]
                 [ H.text "Login" ]
