@@ -26,6 +26,7 @@ main =
 type Msg
     = HandleLoginResp (Result Http.Error String)
 
+
 type alias Model =
     { backendOK : Bool
     , backendError : Maybe String
@@ -58,13 +59,22 @@ subscriptions model =
 
 view : Model -> H.Html Msg
 view model =
-    H.div []
-        [ H.h1 [] [ H.text "Hello World" ]
-        , H.text
-            (if model.backendOK then
-                "Login Worked. All good!"
-
-             else
-                "Login Failed. Check network tab."
-            )
+    H.div [ HA.class "login-box" ]
+        [ H.h1 [] [ H.text "Login" ]
+        , H.form []
+            [ H.input
+                [ HA.placeholder "Player Id"
+                , HAA.ariaLabel "Player ID"
+                ]
+                []
+            , H.input
+                [ HA.placeholder "Password"
+                , HA.type_ "password"
+                , HAA.ariaLabel "Password"
+                ]
+                []
+            , H.button
+                [ HA.class "btn primary" ]
+                [ H.text "Login" ]
+            ]
         ]
