@@ -28,6 +28,11 @@ type Msg
     | SetLoginPlayerId String
     | SetLoginPassword String
     | LoginSubmit
+    | SetRegisterPlayerId String
+    | SetRegisterPassword String
+    | SetRegisterPasswordAgain String
+    | RegisterSubmit
+    | HandleRegisterResp (Result Http.Error String)
 
 
 type alias Model =
@@ -35,6 +40,10 @@ type alias Model =
     , backendError : Maybe String
     , loginPlayerId : String
     , loginPassword : String
+    , registerPlayerId : String
+    , registerPassword : String
+    , registerPasswordAgain : String
+    , registerValidationIssues : List String
     }
 
 
@@ -44,6 +53,10 @@ init _ =
       , backendError = Nothing
       , loginPlayerId = ""
       , loginPassword = ""
+      , registerPlayerId = ""
+      , registerPassword = ""
+      , registerPasswordAgain = ""
+      , registerValidationIssues = []
       }
     , Cmd.none
     )
@@ -67,6 +80,40 @@ update action model =
         LoginSubmit ->
             ( model, BE.postApiLogin (BE.DbPlayer model.loginPlayerId model.loginPassword) HandleLoginResp )
 
+        SetRegisterPlayerId pId ->
+            ( { model | registerPlayerId = pId }, Cmd.none )
+
+        SetRegisterPassword pw ->
+            ( { model | registerPassword = pw }, Cmd.none )
+
+        SetRegisterPasswordAgain pw ->
+            ( { model | registerPasswordAgain = pw }, Cmd.none )
+
+        RegisterSubmit ->
+            let
+                handleErrs es =
+                    ( { model | registerValidationIssues = es }, Cmd.none )
+
+                registerPlayer dbP =
+                    ( { model | registerValidationIssues = [] }, BE.postApiPlayers dbP HandleRegisterResp )
+            in
+            validateDbPlayer model |> Utils.result handleErrs registerPlayer
+
+        HandleRegisterResp (Ok r) ->
+            ( { model | backendOK = True, backendError = Nothing }, Cmd.none )
+
+        HandleRegisterResp (Err err) ->
+            ( { model | backendError = Just (Utils.httpErrorToStr err), backendOK = False }, Cmd.none )
+
+
+validateDbPlayer : Model -> Result.Result (List String) BE.DbPlayer
+validateDbPlayer model =
+    if model.registerPassword == model.registerPasswordAgain then
+        Ok <| BE.DbPlayer model.registerPlayerId model.registerPassword
+
+    else
+        Err [ "Passwords do not match" ]
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -75,29 +122,66 @@ subscriptions model =
 
 view : Model -> H.Html Msg
 view model =
-    H.div [ HA.class "login-box" ]
-        [ H.h1 [] [ H.text "Login" ]
-        , H.form [ HE.onSubmit LoginSubmit ]
-            [ H.input
-                [ HA.placeholder "Player ID"
-                , HAA.ariaLabel "Player ID"
-                , HE.onInput SetLoginPlayerId
+    H.div []
+        [ H.div
+            [ HA.class "login-box" ]
+            [ H.h1 [] [ H.text "Login" ]
+            , H.form [ HE.onSubmit LoginSubmit ]
+                [ H.input
+                    [ HA.placeholder "Player ID"
+                    , HAA.ariaLabel "Player ID"
+                    , HE.onInput SetLoginPlayerId
+                    ]
+                    [ H.text model.loginPlayerId
+                    ]
+                , H.input
+                    [ HA.placeholder "Password"
+                    , HA.type_ "password"
+                    , HAA.ariaLabel "Password"
+                    , HE.onInput SetLoginPassword
+                    ]
+                    [ H.text model.loginPassword
+                    ]
+                , H.ul
+                    [ HA.class "err" ]
+                    (Utils.maybe [] (\e -> [ H.li [] [ H.text e ] ]) model.backendError)
+                , H.button
+                    [ HA.class "btn primary" ]
+                    [ H.text "Login" ]
                 ]
-                [ H.text model.loginPlayerId
+            ]
+        , H.div [ HA.class "login-box" ]
+            [ H.h1 [] [ H.text "Register" ]
+            , H.form [ HE.onSubmit RegisterSubmit ]
+                [ H.input
+                    [ HA.placeholder "Player ID"
+                    , HAA.ariaLabel "Player ID"
+                    , HE.onInput SetRegisterPlayerId
+                    ]
+                    [ H.text model.registerPlayerId
+                    ]
+                , H.input
+                    [ HA.placeholder "Password"
+                    , HA.type_ "password"
+                    , HAA.ariaLabel "Password"
+                    , HE.onInput SetRegisterPassword
+                    ]
+                    [ H.text model.registerPassword
+                    ]
+                , H.input
+                    [ HA.placeholder "PasswordAgain"
+                    , HA.type_ "password"
+                    , HAA.ariaLabel "PasswordAgain"
+                    , HE.onInput SetRegisterPasswordAgain
+                    ]
+                    [ H.text model.registerPasswordAgain
+                    ]
+                , H.ul
+                    [ HA.class "err" ]
+                    (List.map (\e -> H.li [] [ H.text e ]) model.registerValidationIssues)
+                , H.button
+                    [ HA.class "btn primary" ]
+                    [ H.text "Register" ]
                 ]
-            , H.input
-                [ HA.placeholder "Password"
-                , HA.type_ "password"
-                , HAA.ariaLabel "Password"
-                , HE.onInput SetLoginPassword
-                ]
-                [ H.text model.loginPassword
-                ]
-            , H.ul
-                [ HA.class "err" ]
-                (Utils.maybe [] (\e -> [ H.li [] [ H.text e ] ]) model.backendError)
-            , H.button
-                [ HA.class "btn primary" ]
-                [ H.text "Login" ]
             ]
         ]

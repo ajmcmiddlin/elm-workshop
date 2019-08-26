@@ -1,4 +1,4 @@
-module Utils exposing (disabledIfLoading, httpErrorToStr, maybe, maybeIsNothing, maybeToList, remoteDataError)
+module Utils exposing (disabledIfLoading, httpErrorToStr, maybe, maybeIsNothing, maybeToList, remoteDataError, result)
 
 import Html as H
 import Html.Attributes as HA
@@ -21,6 +21,16 @@ remoteDataError rd =
 
         _ ->
             Nothing
+
+
+result : (a -> c) -> (b -> c) -> Result a b -> c
+result f g r =
+    case r of
+        Ok b ->
+            g b
+
+        Err a ->
+            f a
 
 
 maybe : b -> (a -> b) -> Maybe a -> b
