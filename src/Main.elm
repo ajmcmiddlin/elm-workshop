@@ -37,28 +37,32 @@ type Msg
 
 type alias Model =
     { backendOK : Bool
-    , backendError : Maybe String
+    , loginError : Maybe String
     , loginPlayerId : String
     , loginPassword : String
-    , token : Maybe String
+    , loginToken : Maybe String
+    , registerError : Maybe String
     , registerPlayerId : String
     , registerPassword : String
     , registerPasswordAgain : String
     , registerValidationIssues : List String
+    , registerToken : Maybe String
     }
 
 
 init : flags -> ( Model, Cmd Msg )
 init _ =
     ( { backendOK = True
-      , backendError = Nothing
+      , loginError = Nothing
       , loginPlayerId = ""
       , loginPassword = ""
-      , token = Nothing
+      , loginToken = Nothing
+      , registerError = Nothing
       , registerPlayerId = ""
       , registerPassword = ""
       , registerPasswordAgain = ""
       , registerValidationIssues = []
+      , registerToken = Nothing
       }
     , Cmd.none
     )
