@@ -56,7 +56,7 @@ update action model =
             ( { model | backendOK = True, backendError = Nothing }, Cmd.none )
 
         HandleLoginResp (Err err) ->
-            ( { model | backendError = Just "Backend login failed", backendOK = False }, Cmd.none )
+            ( { model | backendError = Just (Utils.httpErrorToStr err), backendOK = False }, Cmd.none )
 
         SetLoginPlayerId pId ->
             ( { model | loginPlayerId = pId }, Cmd.none )
@@ -65,7 +65,7 @@ update action model =
             ( { model | loginPassword = pw }, Cmd.none )
 
         LoginSubmit ->
-            ( model, BE.postApiLogin (BE.DbPlayer "user1" "pass") HandleLoginResp )
+            ( model, BE.postApiLogin (BE.DbPlayer model.loginPlayerId model.loginPassword) HandleLoginResp )
 
 
 subscriptions : Model -> Sub Msg
@@ -79,7 +79,7 @@ view model =
         [ H.h1 [] [ H.text "Login" ]
         , H.form [ HE.onSubmit LoginSubmit ]
             [ H.input
-                [ HA.placeholder "Player Id"
+                [ HA.placeholder "Player ID"
                 , HAA.ariaLabel "Player ID"
                 , HE.onInput SetLoginPlayerId
                 ]
@@ -93,6 +93,9 @@ view model =
                 ]
                 [ H.text model.loginPassword
                 ]
+            , H.ul
+                [ HA.class "err" ]
+                (Utils.maybe [] (\e -> [ H.li [] [ H.text e ] ]) model.backendError)
             , H.button
                 [ HA.class "btn primary" ]
                 [ H.text "Login" ]
