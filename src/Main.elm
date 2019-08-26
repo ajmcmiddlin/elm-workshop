@@ -78,7 +78,9 @@ update action model =
             ( { model | loginPassword = pw }, Cmd.none )
 
         LoginSubmit ->
-            ( model, BE.postApiLogin (BE.DbPlayer model.loginPlayerId model.loginPassword) HandleLoginResp )
+            ( { model | loginToken = RemoteData.Loading }
+            , BE.postApiLogin (BE.DbPlayer model.loginPlayerId model.loginPassword) HandleLoginResp
+            )
 
         SetRegisterPlayerId pId ->
             ( { model | registerPlayerId = pId }, Cmd.none )
