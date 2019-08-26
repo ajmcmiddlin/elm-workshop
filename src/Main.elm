@@ -8,7 +8,7 @@ import Html.Attributes as HA
 import Html.Attributes.Aria as HAA
 import Html.Events as HE
 import Http
-import RemoteData exposing (RemoteData(..))
+import RemoteData exposing (RemoteData)
 import Session
 import Utils
 
@@ -49,10 +49,10 @@ type alias Model =
 
 init : flags -> ( Model, Cmd Msg )
 init _ =
-    ( { loginToken = NotAsked
+    ( { loginToken = RemoteData.NotAsked
       , loginPlayerId = ""
       , loginPassword = ""
-      , registerToken = NotAsked
+      , registerToken = RemoteData.NotAsked
       , registerPlayerId = ""
       , registerPassword = ""
       , registerPasswordAgain = ""
@@ -66,10 +66,10 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update action model =
     case action of
         HandleLoginResp (Ok t) ->
-            ( { model | loginToken = Success t }, Cmd.none )
+            ( { model | loginToken = RemoteData.Success t }, Cmd.none )
 
         HandleLoginResp (Err err) ->
-            ( { model | loginToken = Failure (Utils.httpErrorToStr err) }, Cmd.none )
+            ( { model | loginToken = RemoteData.Failure (Utils.httpErrorToStr err) }, Cmd.none )
 
         SetLoginPlayerId pId ->
             ( { model | loginPlayerId = pId }, Cmd.none )
@@ -92,20 +92,22 @@ update action model =
         RegisterSubmit ->
             let
                 handleErrs es =
-                    ( { model | registerValidationIssues = es }, Cmd.none )
+                    ( { model | registerValidationIssues = es, registerToken = RemoteData.NotAsked }
+                    , Cmd.none
+                    )
 
                 registerPlayer dbP =
-                    ( { model | registerValidationIssues = [], registerToken = Loading }
+                    ( { model | registerValidationIssues = [], registerToken = RemoteData.Loading }
                     , BE.postApiPlayers dbP HandleRegisterResp
                     )
             in
             Utils.result handleErrs registerPlayer <| validateDbPlayer model
 
         HandleRegisterResp (Ok t) ->
-            ( { model | registerToken = Success t }, Cmd.none )
+            ( { model | registerToken = RemoteData.Success t }, Cmd.none )
 
         HandleRegisterResp (Err err) ->
-            ( { model | registerToken = Failure (Utils.httpErrorToStr err) }, Cmd.none )
+            ( { model | registerToken = RemoteData.Failure (Utils.httpErrorToStr err) }, Cmd.none )
 
 
 validateDbPlayer : Model -> Result.Result (List String) BE.DbPlayer
