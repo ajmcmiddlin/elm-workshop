@@ -40,6 +40,7 @@ type alias Model =
     , backendError : Maybe String
     , loginPlayerId : String
     , loginPassword : String
+    , token : Maybe String
     , registerPlayerId : String
     , registerPassword : String
     , registerPasswordAgain : String
@@ -53,6 +54,7 @@ init _ =
       , backendError = Nothing
       , loginPlayerId = ""
       , loginPassword = ""
+      , token = Nothing
       , registerPlayerId = ""
       , registerPassword = ""
       , registerPasswordAgain = ""
@@ -65,11 +67,11 @@ init _ =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update action model =
     case action of
-        HandleLoginResp (Ok r) ->
-            ( { model | backendOK = True, backendError = Nothing }, Cmd.none )
+        HandleLoginResp (Ok t) ->
+            ( { model | backendOK = True, backendError = Nothing, token = Just t }, Cmd.none )
 
         HandleLoginResp (Err err) ->
-            ( { model | backendError = Just (Utils.httpErrorToStr err), backendOK = False }, Cmd.none )
+            ( { model | backendError = Just (Utils.httpErrorToStr err), backendOK = False, token = Nothing }, Cmd.none )
 
         SetLoginPlayerId pId ->
             ( { model | loginPlayerId = pId }, Cmd.none )
@@ -97,7 +99,9 @@ update action model =
                 registerPlayer dbP =
                     ( { model | registerValidationIssues = [] }, BE.postApiPlayers dbP HandleRegisterResp )
             in
-            validateDbPlayer model |> Utils.result handleErrs registerPlayer
+            validateDbPlayer model
+                |> Utils.result handleErrs registerPlayer
+                |> Tuple.mapFirst (\m -> { m | token = Nothing })
 
         HandleRegisterResp (Ok r) ->
             ( { model | backendOK = True, backendError = Nothing }, Cmd.none )
