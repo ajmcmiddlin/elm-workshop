@@ -187,10 +187,15 @@ view model =
                     ]
                 , H.ul
                     [ HA.class "err" ]
-                    (List.map (\e -> H.li [] [ H.text e ]) model.registerValidationIssues)
+                    (List.map (\e -> H.li [] [ H.text e ]) <| registerErrors model)
                 , H.button
                     [ HA.class "btn primary" ]
                     [ H.text "Register" ]
                 ]
             ]
         ]
+
+
+registerErrors : Model -> List String
+registerErrors m =
+    m.registerValidationIssues ++ Utils.maybeToList m.registerError
