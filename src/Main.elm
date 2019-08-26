@@ -8,7 +8,7 @@ import Html.Attributes as HA
 import Html.Attributes.Aria as HAA
 import Html.Events as HE
 import Http
-import RemoteData exposing (RemoteData)
+import RemoteData exposing (RemoteData(..))
 import Session
 import Utils
 
@@ -36,31 +36,27 @@ type Msg
 
 
 type alias Model =
-    { loginError : Maybe String
+    { loginToken : RemoteData String String
     , loginPlayerId : String
     , loginPassword : String
-    , loginToken : Maybe String
-    , registerError : Maybe String
+    , registerToken : RemoteData String String
     , registerPlayerId : String
     , registerPassword : String
     , registerPasswordAgain : String
     , registerValidationIssues : List String
-    , registerToken : Maybe String
     }
 
 
 init : flags -> ( Model, Cmd Msg )
 init _ =
-    ( { loginError = Nothing
+    ( { loginToken = NotAsked
       , loginPlayerId = ""
       , loginPassword = ""
-      , loginToken = Nothing
-      , registerError = Nothing
+      , registerToken = NotAsked
       , registerPlayerId = ""
       , registerPassword = ""
       , registerPasswordAgain = ""
       , registerValidationIssues = []
-      , registerToken = Nothing
       }
     , Cmd.none
     )
@@ -70,10 +66,10 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update action model =
     case action of
         HandleLoginResp (Ok t) ->
-            ( { model | loginError = Nothing, loginToken = Just t }, Cmd.none )
+            ( { model | loginToken = Success t }, Cmd.none )
 
         HandleLoginResp (Err err) ->
-            ( { model | loginError = Just (Utils.httpErrorToStr err), loginToken = Nothing }, Cmd.none )
+            ( { model | loginToken = Failure (Utils.httpErrorToStr err) }, Cmd.none )
 
         SetLoginPlayerId pId ->
             ( { model | loginPlayerId = pId }, Cmd.none )
@@ -96,23 +92,20 @@ update action model =
         RegisterSubmit ->
             let
                 handleErrs es =
-                    ( es, Cmd.none )
+                    ( { model | registerValidationIssues = es }, Cmd.none )
 
                 registerPlayer dbP =
-                    ( [], BE.postApiPlayers dbP HandleRegisterResp )
-            in
-            validateDbPlayer model
-                |> Utils.result handleErrs registerPlayer
-                |> Tuple.mapFirst
-                    (\es ->
-                        { model | registerValidationIssues = es, registerToken = Nothing }
+                    ( { model | registerValidationIssues = [], registerToken = Loading }
+                    , BE.postApiPlayers dbP HandleRegisterResp
                     )
+            in
+            Utils.result handleErrs registerPlayer <| validateDbPlayer model
 
         HandleRegisterResp (Ok t) ->
-            ( { model | registerError = Nothing, registerToken = Just t }, Cmd.none )
+            ( { model | registerToken = Success t }, Cmd.none )
 
         HandleRegisterResp (Err err) ->
-            ( { model | registerError = Just (Utils.httpErrorToStr err) }, Cmd.none )
+            ( { model | registerToken = Failure (Utils.httpErrorToStr err) }, Cmd.none )
 
 
 validateDbPlayer : Model -> Result.Result (List String) BE.DbPlayer
@@ -153,7 +146,7 @@ view model =
                     ]
                 , H.ul
                     [ HA.class "err" ]
-                    (Utils.maybe [] (\e -> [ H.li [] [ H.text e ] ]) model.loginError)
+                    (viewRemoteDataError model.loginToken)
                 , H.button
                     [ HA.class "btn primary" ]
                     [ H.text "Login" ]
@@ -187,7 +180,7 @@ view model =
                     ]
                 , H.ul
                     [ HA.class "err" ]
-                    (List.map (\e -> H.li [] [ H.text e ]) <| registerErrors model)
+                    (registerErrors model)
                 , H.button
                     [ HA.class "btn primary" ]
                     [ H.text "Register" ]
@@ -196,6 +189,15 @@ view model =
         ]
 
 
-registerErrors : Model -> List String
+registerErrors : Model -> List (H.Html msg)
 registerErrors m =
-    m.registerValidationIssues ++ Utils.maybeToList m.registerError
+    let
+        validationErrors =
+            List.map (\e -> H.li [] [ H.text e ]) m.registerValidationIssues
+    in
+    validationErrors ++ viewRemoteDataError m.registerToken
+
+
+viewRemoteDataError : RemoteData String String -> List (H.Html msg)
+viewRemoteDataError =
+    Utils.maybe [] (\e -> [ H.li [] [ H.text e ] ]) << Utils.remoteDataError
