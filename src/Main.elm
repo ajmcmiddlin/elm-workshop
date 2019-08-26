@@ -36,8 +36,7 @@ type Msg
 
 
 type alias Model =
-    { backendOK : Bool
-    , loginError : Maybe String
+    { loginError : Maybe String
     , loginPlayerId : String
     , loginPassword : String
     , loginToken : Maybe String
@@ -52,8 +51,7 @@ type alias Model =
 
 init : flags -> ( Model, Cmd Msg )
 init _ =
-    ( { backendOK = True
-      , loginError = Nothing
+    ( { loginError = Nothing
       , loginPlayerId = ""
       , loginPassword = ""
       , loginToken = Nothing
@@ -72,10 +70,10 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update action model =
     case action of
         HandleLoginResp (Ok t) ->
-            ( { model | backendOK = True, backendError = Nothing, token = Just t }, Cmd.none )
+            ( { model | loginError = Nothing, loginToken = Just t }, Cmd.none )
 
         HandleLoginResp (Err err) ->
-            ( { model | backendError = Just (Utils.httpErrorToStr err), backendOK = False, token = Nothing }, Cmd.none )
+            ( { model | loginError = Just (Utils.httpErrorToStr err), loginToken = Nothing }, Cmd.none )
 
         SetLoginPlayerId pId ->
             ( { model | loginPlayerId = pId }, Cmd.none )
@@ -98,20 +96,23 @@ update action model =
         RegisterSubmit ->
             let
                 handleErrs es =
-                    ( { model | registerValidationIssues = es }, Cmd.none )
+                    ( es, Cmd.none )
 
                 registerPlayer dbP =
-                    ( { model | registerValidationIssues = [] }, BE.postApiPlayers dbP HandleRegisterResp )
+                    ( [], BE.postApiPlayers dbP HandleRegisterResp )
             in
             validateDbPlayer model
                 |> Utils.result handleErrs registerPlayer
-                |> Tuple.mapFirst (\m -> { m | token = Nothing })
+                |> Tuple.mapFirst
+                    (\es ->
+                        { model | registerValidationIssues = es, registerToken = Nothing }
+                    )
 
-        HandleRegisterResp (Ok r) ->
-            ( { model | backendOK = True, backendError = Nothing }, Cmd.none )
+        HandleRegisterResp (Ok t) ->
+            ( { model | registerError = Nothing, registerToken = Just t }, Cmd.none )
 
         HandleRegisterResp (Err err) ->
-            ( { model | backendError = Just (Utils.httpErrorToStr err), backendOK = False }, Cmd.none )
+            ( { model | registerError = Just (Utils.httpErrorToStr err) }, Cmd.none )
 
 
 validateDbPlayer : Model -> Result.Result (List String) BE.DbPlayer
@@ -152,7 +153,7 @@ view model =
                     ]
                 , H.ul
                     [ HA.class "err" ]
-                    (Utils.maybe [] (\e -> [ H.li [] [ H.text e ] ]) model.backendError)
+                    (Utils.maybe [] (\e -> [ H.li [] [ H.text e ] ]) model.loginError)
                 , H.button
                     [ HA.class "btn primary" ]
                     [ H.text "Login" ]
