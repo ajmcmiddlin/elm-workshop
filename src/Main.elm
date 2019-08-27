@@ -32,7 +32,7 @@ type Msg
     | SetRegisterPassword String
     | SetRegisterPasswordAgain String
     | RegisterSubmit
-    | HandleRegisterResp (Result Http.Error String)
+    | HandleRegisterResp BE.PlayerId (Result Http.Error String)
 
 
 type alias Model =
@@ -105,16 +105,18 @@ update action model =
 
                 registerPlayer dbP =
                     ( { model | registerValidationIssues = [], registerToken = RemoteData.Loading }
-                    , BE.postApiPlayers dbP HandleRegisterResp
+                    , BE.postApiPlayers dbP <| HandleRegisterResp model.registerPlayerId
                     )
             in
             Utils.result handleErrs registerPlayer <| validateDbPlayer model
 
-        HandleRegisterResp (Ok t) ->
-            ( { model | registerToken = RemoteData.Success t }, Cmd.none )
-
-        HandleRegisterResp (Err err) ->
-            ( { model | registerToken = RemoteData.Failure (Utils.httpErrorToStr err) }, Cmd.none )
+        HandleRegisterResp pId r ->
+            ( { model
+                | player = Result.toMaybe r |> Maybe.map (Session.Player pId)
+                , registerToken = RemoteData.fromResult r |> RemoteData.mapError Utils.httpErrorToStr
+              }
+            , Cmd.none
+            )
 
 
 validateDbPlayer : Model -> Result.Result (List String) BE.DbPlayer
