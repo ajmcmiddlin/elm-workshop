@@ -24,7 +24,7 @@ main =
 
 
 type Msg
-    = HandleLoginResp (Result Http.Error String)
+    = HandleLoginResp BE.PlayerId (Result Http.Error String)
     | SetLoginPlayerId String
     | SetLoginPassword String
     | LoginSubmit
@@ -36,7 +36,8 @@ type Msg
 
 
 type alias Model =
-    { loginToken : RemoteData String String
+    { player : Maybe Session.Player
+    , loginToken : RemoteData String String
     , loginPlayerId : String
     , loginPassword : String
     , registerToken : RemoteData String String
@@ -49,7 +50,8 @@ type alias Model =
 
 init : flags -> ( Model, Cmd Msg )
 init _ =
-    ( { loginToken = RemoteData.NotAsked
+    ( { player = Nothing
+      , loginToken = RemoteData.NotAsked
       , loginPlayerId = ""
       , loginPassword = ""
       , registerToken = RemoteData.NotAsked
@@ -65,11 +67,13 @@ init _ =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update action model =
     case action of
-        HandleLoginResp (Ok t) ->
-            ( { model | loginToken = RemoteData.Success t }, Cmd.none )
-
-        HandleLoginResp (Err err) ->
-            ( { model | loginToken = RemoteData.Failure (Utils.httpErrorToStr err) }, Cmd.none )
+        HandleLoginResp pId r ->
+            ( { model
+                | player = Result.toMaybe r |> Maybe.map (Session.Player pId)
+                , loginToken = RemoteData.fromResult r |> RemoteData.mapError Utils.httpErrorToStr
+              }
+            , Cmd.none
+            )
 
         SetLoginPlayerId pId ->
             ( { model | loginPlayerId = pId }, Cmd.none )
@@ -79,7 +83,8 @@ update action model =
 
         LoginSubmit ->
             ( { model | loginToken = RemoteData.Loading }
-            , BE.postApiLogin (BE.DbPlayer model.loginPlayerId model.loginPassword) HandleLoginResp
+            , BE.postApiLogin (BE.DbPlayer model.loginPlayerId model.loginPassword) <|
+                HandleLoginResp model.loginPlayerId
             )
 
         SetRegisterPlayerId pId ->
