@@ -33,6 +33,9 @@ type Msg
     | SetRegisterPasswordAgain String
     | RegisterSubmit
     | HandleRegisterResp BE.PlayerId (Result Http.Error String)
+    | SetLobbyMsg String
+    | LobbyMsgSubmit
+    | HandleLobbyMsgResp (Result Http.Error ())
 
 
 type alias Model =
@@ -45,6 +48,8 @@ type alias Model =
     , registerPassword : String
     , registerPasswordAgain : String
     , registerValidationIssues : List String
+    , lobbyMsg : String
+    , lobbyMsgError : Maybe String
     }
 
 
@@ -59,6 +64,8 @@ init _ =
       , registerPassword = ""
       , registerPasswordAgain = ""
       , registerValidationIssues = []
+      , lobbyMsg = ""
+      , lobbyMsgError = Nothing
       }
     , Cmd.none
     )
@@ -118,6 +125,36 @@ update action model =
             , Cmd.none
             )
 
+        SetLobbyMsg s ->
+            ( { model | lobbyMsg = s }, Cmd.none )
+
+        LobbyMsgSubmit ->
+            let
+                submit p =
+                    ( { model | lobbyMsgError = Nothing, lobbyMsg = "EMPTY" }, cmd p.token )
+
+                cmd t =
+                    if String.isEmpty model.lobbyMsg then
+                        Cmd.none
+
+                    else
+                        BE.postApiLobby t model.lobbyMsg HandleLobbyMsgResp
+
+                error =
+                    -- I'd probably do a timed redirect or similar here. That way we surface the
+                    -- error, as well as automatically redirect to where the user should be.
+                    ( { model | lobbyMsgError = Just "No Player --- please log in again" }, Cmd.none )
+            in
+            Utils.maybe error submit model.player
+
+        HandleLobbyMsgResp r ->
+            ( Utils.result
+                (\e -> { model | lobbyMsgError = Utils.httpErrorToStr e |> Just })
+                (\() -> model)
+                r
+            , Cmd.none
+            )
+
 
 validateDbPlayer : Model -> Result.Result (List String) BE.DbPlayer
 validateDbPlayer model =
@@ -135,6 +172,44 @@ subscriptions model =
 
 view : Model -> H.Html Msg
 view model =
+    Utils.maybe (loggedOutView model) (\_ -> loggedInView model) model.player
+
+
+loggedInView : Model -> H.Html Msg
+loggedInView model =
+    H.div [ HA.class "lobby" ]
+        [ H.div [ HA.class "lobby-games" ]
+            [ H.h1 [] [ H.text "Lobby" ]
+            ]
+        , H.div [ HA.class "chatbox-container" ]
+            [ H.h2 [] [ H.text "Chat Lobby" ]
+            , H.div [ HA.id "chatbox", HA.class "chatbox" ] []
+            , H.form [ HE.onSubmit LobbyMsgSubmit ]
+                [ H.ul []
+                    [ H.li [ HA.class "chat-message" ]
+                        [ H.input
+                            [ HA.placeholder "type a chat message"
+                            , HA.class "chat-message-input"
+                            , HAA.ariaLabel "Enter Chat Message"
+                            , HE.onInput SetLobbyMsg
+                            ]
+                            [ H.text model.lobbyMsg ]
+                        ]
+                    , H.li []
+                        [ H.button
+                            [ HA.class "btn primary" ]
+                            [ H.text "send" ]
+                        ]
+                    ]
+                , H.p [ HA.class "err" ] <|
+                    Utils.maybe [] (List.singleton << H.text) model.lobbyMsgError
+                ]
+            ]
+        ]
+
+
+loggedOutView : Model -> H.Html Msg
+loggedOutView model =
     H.div []
         [ H.div
             [ HA.class "login-box" ]
