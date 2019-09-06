@@ -131,7 +131,7 @@ update action model =
         LobbyMsgSubmit ->
             let
                 submit p =
-                    ( { model | lobbyMsgError = Nothing, lobbyMsg = "EMPTY" }, cmd p.token )
+                    ( { model | lobbyMsgError = Nothing, lobbyMsg = "" }, cmd p.token )
 
                 cmd t =
                     if String.isEmpty model.lobbyMsg then
@@ -192,8 +192,9 @@ loggedInView model =
                             , HA.class "chat-message-input"
                             , HAA.ariaLabel "Enter Chat Message"
                             , HE.onInput SetLobbyMsg
+                            , HA.value model.lobbyMsg
                             ]
-                            [ H.text model.lobbyMsg ]
+                            []
                         ]
                     , H.li []
                         [ H.button
@@ -219,17 +220,17 @@ loggedOutView model =
                     [ HA.placeholder "Player ID"
                     , HAA.ariaLabel "Player ID"
                     , HE.onInput SetLoginPlayerId
+                    , HA.value model.loginPlayerId
                     ]
-                    [ H.text model.loginPlayerId
-                    ]
+                    []
                 , H.input
                     [ HA.placeholder "Password"
                     , HA.type_ "password"
                     , HAA.ariaLabel "Password"
                     , HE.onInput SetLoginPassword
+                    , HA.value model.loginPassword
                     ]
-                    [ H.text model.loginPassword
-                    ]
+                    []
                 , H.ul
                     [ HA.class "err" ]
                     (viewRemoteDataError model.loginToken)
@@ -245,17 +246,17 @@ loggedOutView model =
                     [ HA.placeholder "Player ID"
                     , HAA.ariaLabel "Player ID"
                     , HE.onInput SetRegisterPlayerId
+                    , HA.value model.registerPlayerId
                     ]
-                    [ H.text model.registerPlayerId
-                    ]
+                    []
                 , H.input
                     [ HA.placeholder "Password"
                     , HA.type_ "password"
                     , HAA.ariaLabel "Password"
                     , HE.onInput SetRegisterPassword
+                    , HA.value model.registerPassword
                     ]
-                    [ H.text model.registerPassword
-                    ]
+                    []
                 , H.input
                     [ HA.placeholder "PasswordAgain"
                     , HA.type_ "password"
